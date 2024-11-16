@@ -1,1 +1,2 @@
-void follow_segment();
+int follow_segment();
+void init_ultra();

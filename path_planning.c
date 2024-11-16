@@ -7,6 +7,7 @@
 #include "follow-segment.h"
 #include "turn.h"
 
+
 // Declaring the grid and its variations ( Visited and Hueristic and dynamic path )
 #if 0
 int grid[7][8]= {{1,1,1,1,1,1,1,1},
@@ -19,7 +20,7 @@ int grid[7][8]= {{1,1,1,1,1,1,1,1},
 #endif
 int grid[7][8]= {{1,1,1,1,1,1,1,1},
                 {1,0,0,1,0,0,0,1},
-                {1,0,0,1,0,0,0,1},
+                {1,0,0,0,0,0,0,1},
                 {1,0,0,0,0,1,1,1},
                 {1,0,0,1,0,0,0,1},
                 {1,0,0,1,0,0,0,1},
@@ -68,6 +69,8 @@ int costarray[4] ;
 double f; // nao deve tá usando
 int g = 1;
 int maxval = 100;
+int obst = 0;
+int new_route = 0;
 
 // Now read the sensors and check the intersection type.
 unsigned int sensors[5];
@@ -105,6 +108,7 @@ int heuristic_man(ax, ay, bx, by)
 
 void path_planning(){
 
+    init_ultra();
     lcd_init_printf();	// required if we want to use printf()
 
 	clear();			// clear the LCD
@@ -113,7 +117,9 @@ void path_planning(){
 	printf("hello");	// print "hello" on the first line of the LCD
 	delay_ms(200);		// wait for 200 ms
 	printf("\nworld");	// print "world" on the second line (because of '\n')
-	delay_ms(2000);		// wait for 2 seconds
+	
+    delay_ms(2000);		// wait for 2 seconds
+
 
 	clear();
 
@@ -225,6 +231,7 @@ void path_planning(){
         }
         
         printf("(%d,%d)", locx, locy);
+        //delay_ms(2000);
         
         switch(dir_prev)
         {
@@ -233,7 +240,7 @@ void path_planning(){
                 printf(" r L");
                 dir_robot = 'L';
             }else if(dir == 'R'){
-                printf("\nnothing");
+                printf(">not L");
             }else if(dir == 'L'){
                 printf(" r S");
                 dir_robot = 'S';
@@ -250,7 +257,7 @@ void path_planning(){
                 printf(" r S");
                 dir_robot = 'S';
             }else if(dir == 'L'){
-                printf("\nnothing");
+                printf(">not R");
             }else if(dir == 'U'){
                 printf(" r L");
                 dir_robot = 'L';
@@ -258,7 +265,7 @@ void path_planning(){
             break;
         case 'U':
             if(dir == 'D'){
-                printf("\nnothing");
+                printf(">not U");
             }else if(dir == 'R'){
                 printf(" r R");
                 dir_robot = 'R';
@@ -281,7 +288,7 @@ void path_planning(){
                 printf(" r R");
                 dir_robot = 'R';
             }else if(dir == 'U'){
-                printf("\nnothing");
+                printf(">not D");
             }
             break;
         case 'X':
@@ -300,28 +307,71 @@ void path_planning(){
             break;
         }
         
-        dir_prev = dir;
         turn(dir_robot);
+        set_motors(0,0);
+        //delay_ms(2000);
 
         // Store the intersection in the path variable.
 		path[path_length] = dir_robot;
 		path_length ++;
 
         while(true){
-            follow_segment();
-            read_line(sensors,IR_EMITTERS_ON);
-            if((sensors[0] > 200) && (sensors[1] > 200) && (sensors[2] > 200) && (sensors[3] > 200) && (sensors[4] > 200))
-		    {
-                play(">>a32");
-                set_motors(20,20);
-                delay_ms(100);
+            obst = follow_segment();
+            if (obst){
                 set_motors(0,0);
-                play(">>a32");
-                break;
+                clear();
+                printf("Obstacu");
+                turn('B');
+                set_motors(0,0);
+                delay_ms(500);
+                clear();
+                new_route = 1;
+            }else{
+                read_line(sensors,IR_EMITTERS_ON);
+                if((sensors[0] > 200) && (sensors[1] > 200) && (sensors[2] > 200) && (sensors[3] > 200) && (sensors[4] > 200))
+                {
+                    play(">>a32");
+                    set_motors(20,20);
+                    delay_ms(100);
+                    //set_motors(60,60);
+                    //delay_ms(300);
+                    set_motors(0,0);
+                    play(">>a32");
+                    break;
+                }
             }
         }
         
-        //delay_ms(1000);
+        if(new_route){
+        
+            clear();
+            printf("OB(%d,%d)",locx, locy);
+
+            grid[locx][locy]=1;
+            visited[locx][locy]=2;
+            if(index_2 == 0){
+                printf("\nND(%d,%d)", locx+1, locy);
+                locx = locx+1;
+                dir =  'D';
+            }else if(index_2 == 1){
+                printf("\nNL(%d,%d)", locx, locy-1);
+                locy = locy-1;
+                dir = 'L';
+            }else if(index_2 == 2){
+                printf("\nNU(%d,%d)", locx-1, locy);
+                locx = locx-1;
+                dir = 'U';
+            }else if(index_2 == 3){
+                printf("\nNR(%d,%d)", locx, locy+1);
+                locy = locy+1;
+                dir = 'R';
+            }
+            //break;
+            new_route = 0;
+        }
+        
+        dir_prev = dir;
+        //delay_ms(2000);
         
         if(locx == goalx && locy == goaly){
             visited[locx][locy] = 2;

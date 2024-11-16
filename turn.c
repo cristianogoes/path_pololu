@@ -14,12 +14,17 @@ void turn(char dir)
 	case 'L':
 		// Turn left.
 		set_motors(-25,25);
-		delay_ms(200);
+		delay_ms(400);
+		//set_motors(-80,80);
+		//delay_ms(400);
+		
 		break;
 	case 'R':
 		// Turn right.
 		set_motors(25,-25);
 		delay_ms(200);
+		//set_motors(80,-80);
+		//delay_ms(400);
 		break;
 	case 'B':
 		// Turn around.

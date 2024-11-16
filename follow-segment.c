@@ -9,8 +9,31 @@
 
 #include <pololu/3pi.h>
 
-void follow_segment()
+void init_ultra()
 {
+  set_digital_output(IO_D1, LOW);  // make trigger pin low
+  delay_ms(100);  // give the sensor time to start up
+}
+
+int read_ultra()
+{
+  set_digital_output(IO_D1, HIGH);  // make a 10 us pulse on TRIG
+  delay_us(10);
+  set_digital_output(IO_D1, LOW);
+
+  while (!is_digital_input_high(IO_D0));  // wait until pin PD0 goes high (start of echo pulse)
+  unsigned long ticks = get_ticks();  // get the current system time in ticks
+  while (is_digital_input_high(IO_D0));  // wait until pin PD0 goes low (end of echo pulse)
+  ticks = get_ticks() - ticks;  // length of the echo pulse in ticks (units are 0.4 us)
+
+  return ((ticks*4/(10*148))*25.4);
+}
+
+int follow_segment()
+{
+	//set_digital_output(IO_D1, LOW);  // make trigger pin low
+  	//delay_ms(100);  // give the sensor time to start up
+
 	int last_proportional = 0;
 	long integral=0;
 
@@ -23,6 +46,8 @@ void follow_segment()
 		// Get the position of the line.
 		unsigned int sensors[5];
 		unsigned int position = read_line(sensors,IR_EMITTERS_ON);
+		unsigned long dist_sensor = read_ultra();
+		//unsigned long dist_sensor = 100;
 
 		// The "proportional" term should be 0 when we are on the line.
 		int proportional = ((int)position) - 2000;
@@ -45,6 +70,7 @@ void follow_segment()
 		// Compute the actual motor settings.  We never set either motor
 		// to a negative value.
 		const int max = 20; // the maximum speed
+		//const int max = 100; // the maximum speed
 		if(power_difference > max)
 			power_difference = max;
 		if(power_difference < -max)
@@ -60,21 +86,23 @@ void follow_segment()
 		// sensors 0 and 4 for detecting lines going to the left and
 		// right.
 
-		#if 0
-		if(sensors[1] < 100 && sensors[2] < 100 && sensors[3] < 100)
-		{
-			// There is no line visible ahead, and we didn't see any
-			// intersection.  Must be a dead end.
-			return;
-		}
-		#endif
-		//else if(sensors[0] > 200 || sensors[4] > 200)
 		if((sensors[0] > 200) && (sensors[1] > 200) && (sensors[2] > 200) && (sensors[3] > 200) && (sensors[4] > 200))
 		{
 			// Found an intersection.
 			set_motors(0, 0);
-			return;
+			return 0;
 		}
+
+		if(dist_sensor < 75){
+			set_motors(0,0);
+			return 1;
+		}
+		#if 0		
+		if(((ticks*4/(10*148))*25.4) < 75){
+			set_motors(0,0);
+			return 1;
+		}
+		#endif
 
 	}
 }
